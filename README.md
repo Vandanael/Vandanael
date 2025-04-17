@@ -1,5 +1,5 @@
-<h1 align="center">Hi 👋, I'm Yvan</h1>
-<h3 align="center">Still learning technologies as well at working in it</h3>
+<h1 align="left">Hi 👋, I'm Yvan</h1>
+<h3 align="left">Still learning technologies as well at working in it</h3>
 
 <h3 align="left">Connect with me on <a href="https://bsky.app/profile/vanduweb.bsky.social" target="_blank">Bluesky</a> </h3>
 <p align="left">
