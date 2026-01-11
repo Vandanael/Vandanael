@@ -1,0 +1,64 @@
+name: Update Pages List
+on:
+  workflow_dispatch: # Permet de lancer manuellement le script
+  schedule:
+    - cron: '0 0 * * *' # S'exécute tous les jours à minuit
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Générer la liste et mettre à jour le README
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USER: ${{ github.repository_owner }}
+        run: |
+          # 1. Récupérer les repos avec GitHub Pages via l'outil CLI 'gh'
+          # On filtre pour ne garder que ceux qui ont 'hasPages: true'
+          gh repo list $USER --limit 100 --json name,hasPages,homepage,html_url --jq '.[] | select(.hasPages)' > repos.json
+          
+          # 2. Créer le contenu Markdown (Python pour la facilité de texte)
+          python3 -c "
+          import json, os
+
+          user = os.environ['USER']
+          with open('repos.json') as f:
+              repos = json.load(f)
+
+          md_lines = []
+          for r in repos:
+              # On détermine l'URL du site (soit le champ homepage, soit l'URL par défaut)
+              site_url = r['homepage']
+              if not site_url:
+                  site_url = f'https://{user}.github.io/{r['name']}/'
+              
+              # On crée la ligne : - [Nom du repo](URL du site)
+              md_lines.append(f'- [{r['name']}]({site_url})')
+
+          content = '\n'.join(md_lines)
+          
+          # Mise à jour du README
+          with open('README.md', 'r') as f:
+              readme = f.read()
+          
+          start_marker = ''
+          end_marker = ''
+          
+          start_idx = readme.find(start_marker) + len(start_marker)
+          end_idx = readme.find(end_marker)
+          
+          if start_idx != -1 and end_idx != -1:
+              new_readme = readme[:start_idx] + '\n' + content + '\n' + readme[end_idx:]
+              with open('README.md', 'w') as f:
+                  f.write(new_readme)
+          "
+          
+      - name: Commit et Push
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git diff --quiet && git diff --staged --quiet || (git commit -am "Mise à jour de la liste des Pages" && git push)
