@@ -17,9 +17,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USER: ${{ github.repository_owner }}
         run: |
-          # CORRECTION : On utilise 'gh api' au lieu de 'gh repo list'
-          # Cela garantit l'accès au champ 'has_pages'
-          gh api user/repos --paginate --jq 'map(select(.has_pages))' > repos.json
+          # --- CORRECTION ICI ---
+          # On interroge l'endpoint public "users/NOM/repos" au lieu de "user/repos"
+          # Cela évite l'erreur 403
+          gh api "users/$USER/repos?per_page=100&type=owner" --paginate --jq 'map(select(.has_pages))' > repos.json
           
           python3 -c "
           import json, os
@@ -29,26 +30,31 @@ jobs:
               with open('repos.json') as f:
                   repos = json.load(f)
           except:
+              print('Erreur ou fichier vide, aucun repo trouvé.')
               repos = []
 
           md_lines = []
           for r in repos:
-              # Dans l'API brute, le champ s'appelle 'homepage' (peut être null)
+              # L'API peut renvoyer 'homepage' vide ou null
               site_url = r.get('homepage')
               
-              # Si pas d'URL personnalisée, on construit la par défaut
+              # Si l'URL n'est pas définie dans le repo, on la construit
               if not site_url:
                   site_url = f'https://{user}.github.io/{r['name']}/'
               
-              md_lines.append(f'- [{r['name']}]({site_url})')
+              # On ajoute la ligne avec une icône
+              md_lines.append(f'- 🌍 [{r['name']}]({site_url})')
 
           content = '\n'.join(md_lines)
           
-          # Mise à jour du README
+          # Si la liste est vide (pas de pages trouvées), on met un message par défaut
+          if not content:
+              content = '_Aucun site détecté pour le moment._'
+
+          # Lecture et écriture du README
           with open('README.md', 'r') as f:
               readme = f.read()
           
-          # ATTENTION : Assurez-vous que ces balises sont bien dans votre README.md
           start_marker = ''
           end_marker = ''
           
@@ -56,18 +62,17 @@ jobs:
           end_idx = readme.find(end_marker)
           
           if start_idx != -1 and end_idx != -1:
-              # On garde les marqueurs et on insère le contenu entre eux
               start_idx += len(start_marker)
               new_readme = readme[:start_idx] + '\n' + content + '\n' + readme[end_idx:]
               with open('README.md', 'w') as f:
                   f.write(new_readme)
+              print('README mis à jour avec succès.')
           else:
-              print('Marqueurs introuvables dans le README.md')
+              print('ERREUR : Marqueurs introuvables dans le README.')
           "
           
       - name: Commit et Push
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          # On ne commit que s'il y a des changements
           git diff --quiet && git diff --staged --quiet || (git commit -am "Mise à jour automatique des Pages" && git push)
