@@ -1,5 +1,5 @@
 <h1 align="left">Hi 👋, I'm Yvan</h1>
-<h3 align="left">Still learning new technologies while working with them</h3>
+<h3 align="left">Building small interactive web games and experiments.</h3>
 
 <h3 align="left">Connect with me on <a href="https://bsky.app/profile/vanduweb.bsky.social" target="_blank">Bluesky</a> </h3>
 <p align="left">
